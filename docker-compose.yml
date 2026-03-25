@@ -1,18 +1,18 @@
 services:  
   EasyProxy:
-    build: https://github.com/nzo66/EasyProxy.git#main
-    container_name: EasyProxy
+    build: https://github.com/ixtlan62/EasyP.git#main
+    container_name: EasyP
     restart: unless-stopped
     ports:
       - '${PORT:-7860}:${PORT:-7860}' #modifica la variabile "PORT" per cambiare la porta
     environment:
-      - API_PASSWORD=ep      #qui inserisci la tua password personalizzata
-      - PORT=7860
+      - API_PASSWORD=02071962     #qui inserisci la tua password personalizzata
+      - PORT=8080
       
       # Scegli come gestire gli stream MPD/DASH:
       # - ffmpeg: Transcoding via FFmpeg (richiede FFmpeg installato, alta CPU ma sync A/V migliore)
       # - legacy: Usa mpd_converter + drm_decrypter (più leggero ma possibili problemi di compatibilità)
-      #- MPD_MODE=legacy
+      MPD_MODE=legacy
       
       # VARIABILI OPZIONALI
       
