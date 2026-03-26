@@ -4,7 +4,7 @@ services:
     container_name: EasyP
     restart: unless-stopped
     ports:
-      - '${PORT:-7860}:${PORT:-7860}' #modifica la variabile "PORT" per cambiare la porta
+      - '${PORT:-8080}:${PORT:-8080}' #modifica la variabile "PORT" per cambiare la porta
     environment:
       - API_PASSWORD=02071962     #qui inserisci la tua password personalizzata
       - PORT=8080
