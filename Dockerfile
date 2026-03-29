@@ -25,7 +25,8 @@ LABEL org.opencontainers.image.version="2.5.0"
 LABEL org.opencontainers.image.source="https://github.com/ixtlan62/EasyP"
 
 # Esponi la porta su cui l'applicazione è in ascolto.
-EXPOSE 7860
+# EXPOSE 7860
+EXPOSE 8080
 
 # Comando per avviare l'app in produzione con Gunicorn
 # Usa sh -c per permettere l'espansione della variabile d'ambiente $PORT
