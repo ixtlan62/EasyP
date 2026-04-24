@@ -931,6 +931,13 @@ class HLSProxy:
                             request_headers, proxies=proxy_list
                         )
                     return self.extractors[key]
+                elif host in ["dlhd", "dlstreams"]:
+                    key = "dlstreams_direct" if bypass_warp else "dlstreams"
+                    if key not in self.extractors:
+                        self.extractors[key] = DLStreamsExtractor(
+                            request_headers, proxies=proxy_list, bypass_warp=bypass_warp
+                        )
+                    return self.extractors[key]
                 elif host in ["city", "cinemacity"]:
                     key = "cinemacity_direct" if bypass_warp else "cinemacity"
                     if key not in self.extractors:
@@ -1130,7 +1137,7 @@ class HLSProxy:
                 return self.extractors[key]
             elif (
                 # Rileva per dominio noto (aggiorna qui se cambia)
-                "dlhd.dad" in url
+                any(d in url for d in ["dlhd.dad", "dlstreams.com"])
                 # Rileva per pattern URL stabile (/watch.php?id=NNN)
                 or (re.search(r'/watch\.php\?.*id=\d+', url) is not None)
             ):
