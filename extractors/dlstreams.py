@@ -322,7 +322,6 @@ class DLStreamsExtractor:
                     "Origin": ref_origin,
                     "User-Agent": self.base_headers["User-Agent"],
                     "Accept": "*/*",
-                    "X-Direct-Connection": "1",
                     "Sec-Fetch-Dest": "empty",
                     "Sec-Fetch-Mode": "cors",
                     "Sec-Fetch-Site": "cross-site",
