@@ -8,6 +8,7 @@ from services.proxy_shared import (
     web,
     check_password,
     BYPASS_WARP_CONTEXT,
+    BYPASS_PROXIES_CONTEXT,
     SELECTED_PROXY_CONTEXT,
     STRICT_PROXY_CONTEXT,
     ManifestRewriter,
@@ -43,9 +44,13 @@ class HLSProxyManifestHandlerMixin:
 
         bypass_warp = (request.query.get("warp", "").lower() == "off")
         token = BYPASS_WARP_CONTEXT.set(bypass_warp)
+        
+        bypass_proxies = (request.query.get("proxy", "").lower() == "off")
+        proxy_bypass_token = BYPASS_PROXIES_CONTEXT.set(bypass_proxies)
+        
         selected_proxy = None
         raw_proxy = request.query.get("proxy")
-        if raw_proxy:
+        if raw_proxy and raw_proxy.lower() != "off":
             selected_proxy = urllib.parse.unquote(raw_proxy)
             if "://" not in selected_proxy and "%3a" in selected_proxy.lower():
                 selected_proxy = urllib.parse.unquote(selected_proxy)
@@ -76,6 +81,25 @@ class HLSProxyManifestHandlerMixin:
 
             if not target_url:
                 return web.Response(text="Missing 'url' or 'd' parameter", status=400)
+
+            # Record stream activity
+            is_segment = (
+                request.path.startswith("/proxy/hls/segment.") or 
+                request.path.startswith("/proxy/mpd/segment.") or 
+                "segment." in request.path
+            )
+            display_url = target_url
+            if url_id and url_id in self.captured_hls_manifest_map:
+                try:
+                    display_url = self.captured_hls_manifest_map[url_id][5] or target_url
+                except Exception:
+                    pass
+            _shared.record_stream_activity(
+                request.remote,
+                display_url,
+                request.headers.get("User-Agent", ""),
+                is_segment=is_segment
+            )
 
             # aiohttp already decodes query parameters once.
             # Do not unquote again here: URLs with embedded encoded separators
@@ -652,11 +676,15 @@ class HLSProxyManifestHandlerMixin:
                 x in error_msg
                 for x in ["403", "forbidden", "502", "bad gateway", "timeout", "connection", "temporarily unavailable"]
             )
+            is_corrupt = "corrupt" in error_msg or "not available" in error_msg
             extractor_name = extractor_name_for_log(extractor)
 
             if is_expired_embed:
                 logger.info("Expired VixSrc embed URL rejected: %s", str(e))
                 return web.Response(text=str(e), status=410)
+            if is_corrupt:
+                logger.warning(f"⚠️ {extractor_name}: Content is corrupt or not available - {str(e)}")
+                return web.Response(text=f"Content corrupt or not available: {str(e)}", status=404)
             if is_not_found:
                 logger.warning(f"🔍 {extractor_name}: Content not found (404) - {str(e)}")
                 return web.Response(text=f"Content not found: {str(e)}", status=404)
@@ -669,5 +697,6 @@ class HLSProxyManifestHandlerMixin:
             return web.Response(text=f"Proxy error: {str(e)}", status=500)
         finally:
             BYPASS_WARP_CONTEXT.reset(token)
+            BYPASS_PROXIES_CONTEXT.reset(proxy_bypass_token)
             SELECTED_PROXY_CONTEXT.reset(proxy_token)
             STRICT_PROXY_CONTEXT.reset(strict_proxy_token)
