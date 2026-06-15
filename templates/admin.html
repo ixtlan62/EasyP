@@ -470,6 +470,17 @@
             </div>
         </div>
 
+        <!-- Proxy Exclude Domains -->
+        <div class="card card-wide">
+            <h2><span class="icon">🚫</span> Proxy Exclude Domains</h2>
+            <p class="help-text">Domains that bypass all custom proxies. Add your custom domains here (they will run via WARP/Direct instead).</p>
+            <div id="proxy-exclude-domains-list"></div>
+            <div class="add-row" style="margin-top:12px">
+                <input type="text" id="new-proxy-exclude-domain" placeholder="e.g. example.com or *.example.com" onkeydown="if(event.key==='Enter')addProxyExcludeDomain()">
+                <button class="btn btn-primary btn-sm" onclick="addProxyExcludeDomain()">+ Add</button>
+            </div>
+        </div>
+
         <!-- Transport Routes -->
         <div class="card">
             <h2><span class="icon">🗺️</span> Transport Routes</h2>
@@ -653,6 +664,7 @@ async function loadConfig() {
         renderWarpOffToggles(config.available_extractors || [], config.warp_off_extractors || []);
         renderProxyOffToggles(config.available_extractors || [], config.proxy_off_extractors || []);
         renderExcludeDomains();
+        renderProxyExcludeDomains();
         document.getElementById('mpd-mode').value = config.mpd_mode || 'legacy';
         setToggle('remux-toggle', config.enable_remuxing !== false);
         setToggle('dvr-toggle', config.dvr_enabled || false);
@@ -1112,6 +1124,45 @@ async function removeExcludeDomain(domain) {
     await saveField('warp_exclude_domains_custom', custom);
     config.warp_exclude_domains_custom = custom;
     renderExcludeDomains();
+}
+
+function renderProxyExcludeDomains() {
+    const custom = config.proxy_exclude_domains || [];
+    const container = document.getElementById('proxy-exclude-domains-list');
+    container.innerHTML = '';
+    if (custom.length === 0) {
+        container.innerHTML = '<div style="color:var(--text-muted);font-size:0.8rem;padding:8px">No custom domains added</div>';
+        return;
+    }
+    for (const domain of custom) {
+        const div = document.createElement('div');
+        div.className = 'extractor-row';
+        div.innerHTML = `<span>${domain}</span><button class="btn btn-danger btn-sm" onclick="removeProxyExcludeDomain('${domain}')">✕</button>`;
+        container.appendChild(div);
+    }
+}
+
+async function addProxyExcludeDomain() {
+    const input = document.getElementById('new-proxy-exclude-domain');
+    const val = input.value.trim();
+    if (!val) return;
+    const custom = [...(config.proxy_exclude_domains || [])];
+    if (!custom.includes(val)) {
+        custom.push(val);
+        await saveField('proxy_exclude_domains', custom);
+        config.proxy_exclude_domains = custom;
+        renderProxyExcludeDomains();
+    }
+    input.value = '';
+    input.focus();
+}
+
+async function removeProxyExcludeDomain(domain) {
+    let custom = [...(config.proxy_exclude_domains || [])];
+    custom = custom.filter(d => d !== domain);
+    await saveField('proxy_exclude_domains', custom);
+    config.proxy_exclude_domains = custom;
+    renderProxyExcludeDomains();
 }
 
 loadConfig();

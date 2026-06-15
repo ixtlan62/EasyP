@@ -257,6 +257,19 @@ def _is_warp_excluded(url: str) -> bool:
             return True
     return False
 
+def _get_dynamic_proxy_exclude_domains() -> list:
+    return _cfg_get("proxy_exclude_domains", [])
+
+def _is_proxy_excluded(url: str) -> bool:
+    if not url:
+        return False
+    normalized = url.lower()
+    for domain in PROXY_EXCLUDE_DOMAINS:
+        stripped = domain.lstrip("*.")
+        if stripped in normalized:
+            return True
+    return False
+
 def _get_dynamic_global_proxies() -> list:
     return _cfg_get("global_proxies", [])
 
@@ -279,7 +292,7 @@ def get_ordered_proxies_for_url(
 ) -> list[str]:
     """Build proxy priority: extractor-specific, TRANSPORT_ROUTES, fallback/global, WARP."""
     if bypass_proxies is None:
-        bypass_proxies = BYPASS_PROXIES_CONTEXT.get()
+        bypass_proxies = BYPASS_PROXIES_CONTEXT.get() or _is_proxy_excluded(url or "")
 
     _ENABLE_WARP = _get_dynamic_warp_enabled()
     _WARP_PROXY_URL = WARP_PROXY_URL
@@ -565,7 +578,7 @@ def get_proxy_for_url(
     If transport_routes or global_proxies are None, reads from dynamic config_store.
     """
     if bypass_proxies is None:
-        bypass_proxies = BYPASS_PROXIES_CONTEXT.get()
+        bypass_proxies = BYPASS_PROXIES_CONTEXT.get() or _is_proxy_excluded(url or "")
 
     if bypass_warp is None:
         bypass_warp = BYPASS_WARP_CONTEXT.get()
@@ -807,6 +820,7 @@ def reload_config():
     mod = sys.modules[__name__]
     mod.ENABLE_WARP = _get_dynamic_warp_enabled()
     mod.WARP_EXCLUDE_DOMAINS = _get_dynamic_warp_exclude_domains()
+    mod.PROXY_EXCLUDE_DOMAINS = _get_dynamic_proxy_exclude_domains()
     mod.GLOBAL_PROXIES = _get_dynamic_global_proxies()
     mod.TRANSPORT_ROUTES = _get_dynamic_transport_routes()
     mod.MPD_MODE = _cfg_get("mpd_mode", "legacy")
@@ -841,6 +855,7 @@ def __getattr__(name):
     _dynamic_attrs = {
         "ENABLE_WARP": _get_dynamic_warp_enabled,
         "WARP_EXCLUDE_DOMAINS": _get_dynamic_warp_exclude_domains,
+        "PROXY_EXCLUDE_DOMAINS": _get_dynamic_proxy_exclude_domains,
         "GLOBAL_PROXIES": _get_dynamic_global_proxies,
         "TRANSPORT_ROUTES": _get_dynamic_transport_routes,
         "MPD_MODE": lambda: _cfg_get("mpd_mode", "legacy"),
