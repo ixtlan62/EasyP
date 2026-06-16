@@ -10,6 +10,8 @@ import urllib.request
 from dotenv import load_dotenv
 from config_store import get as _cfg_get, set as _cfg_set, get_all as _cfg_get_all
 
+APP_VERSION = "2.9.17"
+
 _proxy_source_cache: dict[str, tuple[float, list]] = {}
 _PROXY_SOURCE_TTL = 600
 
@@ -782,17 +784,8 @@ def get_ssl_setting_for_url(url: str, transport_routes: list = None) -> bool:
 
     return False
 
-
-
 API_PASSWORD = os.environ.get("API_PASSWORD")
 PORT = int(os.environ.get("PORT", 7860))
-
-# --- Version/Mode Configuration ---
-APP_VERSION = "2.9.14"
-
-_has_solvers = os.path.exists("flaresolverr")
-VERSION_MODE = "Full" if _has_solvers else "Light"
-
 
 def check_password(request):
     """Verifica la password API se impostata."""
@@ -811,6 +804,36 @@ def check_password(request):
         return True
 
     return False
+
+
+def get_client_ip(request):
+    """Recupera l'IP reale del client, supportando Cloudflare e reverse proxy."""
+    # Cloudflare
+    cf_ip = request.headers.get("CF-Connecting-IP")
+    if cf_ip:
+        return cf_ip.strip()
+
+    # True-Client-IP (Cloudflare Enterprise / Akamai)
+    true_ip = request.headers.get("True-Client-IP")
+    if true_ip:
+        return true_ip.strip()
+
+    # X-Forwarded-For (standard per reverse proxy)
+    xff = request.headers.get("X-Forwarded-For")
+    if xff:
+        # Prende il primo IP della catena (quello originale del client)
+        parts = [p.strip() for p in xff.split(",")]
+        if parts and parts[0]:
+            return parts[0]
+
+    # X-Real-IP
+    real_ip = request.headers.get("X-Real-IP")
+    if real_ip:
+        return real_ip.strip()
+
+    # Fallback all'indirizzo remoto della richiesta aiohttp
+    return request.remote
+
 
 
 def reload_config():

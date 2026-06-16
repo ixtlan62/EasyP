@@ -7,6 +7,7 @@ from services.proxy_shared import (
     logger,
     web,
     check_password,
+    get_client_ip,
     BYPASS_WARP_CONTEXT,
     BYPASS_PROXIES_CONTEXT,
     SELECTED_PROXY_CONTEXT,
@@ -33,7 +34,7 @@ class HLSProxyManifestHandlerMixin:
         """Gestisce le richieste proxy principali"""
         if not check_password(request):
             logger.warning(
-                f"⛔ Access denied: Invalid or missing API Password. IP: {request.remote}"
+                f"⛔ Access denied: Invalid or missing API Password. IP: {get_client_ip(request)}"
             )
             return web.Response(status=401, text="Unauthorized: Invalid API Password")
 
@@ -95,7 +96,7 @@ class HLSProxyManifestHandlerMixin:
                 except Exception:
                     pass
             _shared.record_stream_activity(
-                request.remote,
+                get_client_ip(request),
                 display_url,
                 request.headers.get("User-Agent", ""),
                 is_segment=is_segment
@@ -147,6 +148,7 @@ class HLSProxyManifestHandlerMixin:
                         no_bypass=request.query.get("no_bypass") == "1",
                         shorten_url_func=None,
                         bypass_warp=bypass_warp,
+                        bypass_proxies=bypass_proxies,
                         disable_ssl=request.query.get("disable_ssl") == "1",
                         selected_proxy=selected_proxy,
                         force_direct=force_direct,
@@ -219,6 +221,8 @@ class HLSProxyManifestHandlerMixin:
 
                 # Cattura e sanifica il proxy per evitare double-encoding (%253A -> %3A)
                 raw_proxy = request.query.get("proxy") or result.get("selected_proxy")
+                if raw_proxy and raw_proxy.lower() == "off":
+                    raw_proxy = None
                 if not raw_proxy and extractor:
                     raw_proxy = (
                         getattr(extractor, "last_used_proxy", None)
@@ -364,6 +368,7 @@ class HLSProxyManifestHandlerMixin:
                     no_bypass=no_bypass,
                     shorten_url_func=shorten_captured_manifest_url if use_short_hls_urls else None,
                     bypass_warp=bypass_warp,
+                    bypass_proxies=bypass_proxies,
                     disable_ssl=disable_ssl,
                     selected_proxy=selected_proxy,
                     force_direct=force_direct,
@@ -584,6 +589,12 @@ class HLSProxyManifestHandlerMixin:
                     ext_param = request.query.get("ext")
                     if ext_param:
                         params += f"&ext={ext_param}"
+
+                    # Propagate warp=off and proxy=off to generated HLS URLs
+                    if bypass_warp:
+                        params += "&warp=off"
+                    if bypass_proxies:
+                        params += "&proxy=off"
 
                     # Check if requesting specific representation
                     rep_id = request.query.get("rep_id")
