@@ -156,6 +156,10 @@ class HLSProxyStreamingMixin:
             # ✅ Use pooled session with automatic retry failover
             bypass_warp = request.query.get("warp", "").lower() == "off"
             forced_proxy = request.query.get("proxy") or None
+            if forced_proxy and forced_proxy.lower() == "off":
+                forced_proxy = None
+                _shared.BYPASS_PROXIES_CONTEXT.set(True)
+                logger.debug(f"🔍 [Segment-DEBUG] proxy=off detected, BYPASS_PROXIES_CONTEXT=True, bypass_warp={bypass_warp}")
 
             current_proxy = forced_proxy
             attempts = 2 if forced_proxy else 1
